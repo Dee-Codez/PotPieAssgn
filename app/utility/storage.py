@@ -12,7 +12,8 @@ r = redis.Redis(
     password=Config.REDIS_PASSWORD,
 )
 
-conn = psycopg2.connect(Config.POSTGRES_URL)
+def get_postgres_connection():
+    return psycopg2.connect(Config.POSTGRES_URL)
 
 def init_task(task_id):
    
@@ -40,6 +41,7 @@ def update_task(task_id, key, value):
         })
 
 def store_results(task_id, result):
+    conn = get_postgres_connection()
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO results (task_id, result) VALUES (%s, %s)",
@@ -49,11 +51,14 @@ def store_results(task_id, result):
 
     
 def execute_query(query, params):
+    conn = get_postgres_connection()
     with conn.cursor() as cur:
         cur.execute(query, params)
         conn.commit()
 
 def get_results(task_id):
+    conn = get_postgres_connection()
+    
     task_query = "SELECT * FROM tasks WHERE task_id = %s"
     file_query = "SELECT * FROM files WHERE task_id = %s"
     
