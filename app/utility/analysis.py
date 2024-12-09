@@ -10,9 +10,13 @@ from app.utility.storage import init_task, update_task
 genai.configure(api_key=Config.GEMINI_KEY)
 
 def get_pr_data(repo_url, pr_number, github_token):
-    headers = {
-        'Authorization': f'Bearer {github_token}',
-    }
+
+    if github_token not in ['', " ", None]:
+        headers = {
+            'Authorization': f'Bearer {github_token}',
+        }
+    else:
+        headers = {}
     owner, repo = repo_url.split('/')[-2:]
     response = requests.get(f'https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files', headers=headers)
     return response.json()
