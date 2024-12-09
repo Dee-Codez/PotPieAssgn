@@ -10,4 +10,5 @@ class Config:
     REDIS_PORT = int(os.getenv('REDIS_PORT', 11062))
     REDIS_USERNAME = str(os.getenv('REDIS_USERNAME', 'default'))
     REDIS_PASSWORD = str(os.getenv('REDIS_PASSWORD'))
+    POSTGRES_URL = str(os.getenv('POSTGRES_URL'))
     

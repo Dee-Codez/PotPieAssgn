@@ -1,7 +1,11 @@
 import requests
 import google.generativeai as genai
+from celery import Celery
+import json
 
 from app.utility.locale import Config
+from app.celery import celery_app
+from app.utility.storage import init_task, update_task
 
 genai.configure(api_key=Config.GEMINI_KEY)
 
@@ -32,3 +36,55 @@ def gemini_analysis(content):
     """
     response = model.generate_content(prompt)
     return response
+
+
+@celery_app.task
+async def analyze_pr_task(repo_url, pr_number, github_token, task_id):
+    try:
+        pr_data = get_pr_data(repo_url, pr_number, github_token)
+        file = 0
+        
+        await update_task(task_id, 'progress', f"{file}/{len(pr_data)}")
+
+        files = []
+        num_issues = 0
+        num_critical_issues = 0
+
+        for pr in pr_data:
+            file += 1
+            content = get_url_data(pr['raw_url'])
+
+            response = gemini_analysis(content)
+            response = json.loads(response.text.replace('`', '').replace('json', ''))
+
+            files.append({
+                "filename": pr['filename'],
+                "url": pr['raw_url'],
+                "issues": response,
+            })
+
+            num_issues += len(response)
+            num_critical_issues += len([issue for issue in response if issue.get('type') != 'style'])
+
+            await update_task(task_id, 'progress', f"{file}/{len(pr_data)}")
+
+        result = {
+            "task_id": task_id,
+            "status": "completed",
+            "results": {
+                "files": files,
+                "summary": {
+                    "total_files": len(pr_data),
+                    "total_issues": num_issues,
+                    "critical_issues": num_critical_issues
+                }
+            }
+        }
+
+        await update_task(task_id, 'completed', result)
+
+        return result
+        
+    except Exception as e:
+        await update_task(task_id, 'failed', str(e))
+        raise e
