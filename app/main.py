@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import RedirectResponse
 import uuid
 import traceback
 import json
@@ -15,13 +16,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str):
-    return {"item_id": item_id, "q": q}
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 
 @app.post("/analyze-pr")
 async def analyze_pr(body: AnalyzeRequest, background_tasks: BackgroundTasks):
@@ -65,17 +62,9 @@ async def get_task_result(task_id: str):
         elif task.get('status') == 'completed':
             return get_results(task_id)
         else:
-            print(task)
             raise HTTPException(status_code=400, detail="Task is not completed yet")
     except HTTPException as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/init-db")
-async def init_db():
-    success = r.set('foo', 'bar')
-    msg = r.get('foo')
-    init_task('foo2')
-    return {"message": "DB initialized", "success": msg == 'bar', "value": get_task('foo2')}
