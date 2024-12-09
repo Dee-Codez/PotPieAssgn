@@ -1,4 +1,9 @@
 import requests
+import google.generativeai as genai
+
+from app.utility.locale import Config
+
+genai.configure(api_key=Config.GEMINI_KEY)
 
 def get_pr_data(repo_url, pr_number, github_token):
     headers = {
@@ -6,11 +11,24 @@ def get_pr_data(repo_url, pr_number, github_token):
     }
     owner, repo = repo_url.split('/')[-2:]
     response = requests.get(f'https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files', headers=headers)
-    print(owner, repo, pr_number)
     return response.json()
 
 def get_url_data(url):
     response = requests.get(url)
-    print(url)
-    print(response.text)
     return response.text
+
+def gemini_analysis(content):
+    model = genai.GenerativeModel("gemini-1.5-flash")
+
+    prompt = f"""Analyse the following code snippet and infer a list of possible issues and suggestions to improve the code quality.
+    {content}
+    Make sure to provide a detailed analysis of the code snippet and format the output in a list of objects with this schema : 
+    {{
+        "type": "style"/"bug"/"error",
+        "line": "line_number in integer",
+        "description": "brief description of the issue",
+        "suggestion": "suggestion to address the issue"
+    }}
+    """
+    response = model.generate_content(prompt)
+    return response
